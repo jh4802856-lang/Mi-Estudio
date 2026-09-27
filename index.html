@@ -6,7 +6,7 @@
 <title>Mi Plataforma de Estudio</title>
 <style>
   * { box-sizing: border-box; margin:0; padding:0; }
-  body { font-family: -apple-system, Roboto, Arial, sans-serif; background:#f4f6f8; color:#222; padding-bottom:70px;}
+  body { font-family: -apple-system, Roboto, Arial, sans-serif; background:#f4f6f8; color:#222; padding-bottom:30px;}
   header { background:#2d6a4f; color:white; padding:16px; text-align:center; position:sticky; top:0; z-index:10;}
   header h1 { font-size:1.2rem; }
   .contenedor { padding:16px; }
@@ -14,18 +14,21 @@
   .card h3 { color:#2d6a4f; margin-bottom:4px;}
   .badge { display:inline-block; background:#ffb703; color:#222; font-size:0.75rem; padding:2px 8px; border-radius:12px; margin-top:4px;}
   .badge.urgente { background:#e63946; color:white; }
-  nav { position:fixed; bottom:0; left:0; right:0; background:white; display:flex; overflow-x:auto; border-top:1px solid #ddd; z-index:10;}
-  nav button { flex:1; min-width:85px; padding:10px 4px; background:none; border:none; font-size:0.7rem; color:#555; }
+  select.selector { width:100%; padding:14px; border-radius:8px; border:2px solid #2d6a4f; font-size:1rem; background:white; margin-bottom:16px; font-weight:bold; color:#2d6a4f; }
   .oculto { display:none; }
-  .btn { background:#2d6a4f; color:white; border:none; padding:10px 16px; border-radius:8px; font-size:0.9rem; margin-top:8px; width:100%;}
+  .btn { background:#2d6a4f; color:white; border:none; padding:12px 16px; border-radius:8px; font-size:0.95rem; margin-top:8px; width:100%;}
   .btn.secundario { background:#adb5bd; }
-  input, textarea { width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; margin-top:6px; font-size:0.9rem; }
+  input, textarea, select.campo { width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; margin-top:6px; font-size:0.9rem; }
   textarea { min-height:100px; }
   .tema-item { background:white; border-radius:8px; padding:12px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,0.08); }
   .tema-item h4 { color:#333; }
   .fecha { font-size:0.75rem; color:#888; margin-top:2px;}
   .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; padding:16px; z-index:20;}
   .modal { background:white; border-radius:12px; padding:20px; width:100%; max-width:400px; max-height:85vh; overflow-y:auto; }
+  .tabs { display:flex; gap:8px; margin:14px 0; }
+  .tab-btn { flex:1; padding:10px; text-align:center; background:#e9ecef; border-radius:8px; font-size:0.82rem; }
+  .tab-btn.tab-activo { background:#2d6a4f; color:white; font-weight:bold; }
+  label.lbl { font-size:0.8rem; color:#555; margin-top:10px; display:block; }
 </style>
 </head>
 <body>
@@ -33,21 +36,45 @@
 <header><h1>📚 Mi Plataforma de Estudio</h1></header>
 
 <div id="vista-dashboard" class="contenedor">
+  <select id="selector-materia" class="selector" onchange="irAMateria(this.value)">
+    <option value="">📂 Ir a una materia...</option>
+  </select>
+
   <h2>🔔 Hoy toca repasar:</h2>
   <div id="lista-hoy"></div>
+
+  <h2 style="margin-top:20px;">📅 Próximas entregas</h2>
+  <div id="lista-actividades-dashboard"></div>
+
   <h2 style="margin-top:20px;">📊 Resumen por materia</h2>
   <div id="resumen-materias"></div>
 </div>
 
 <div id="vista-materia" class="contenedor oculto">
-  <button class="btn secundario" onclick="mostrarDashboard()">⬅ Volver</button>
+  <select id="selector-materia-2" class="selector" onchange="irAMateria(this.value)">
+    <option value="">📂 Cambiar de materia...</option>
+  </select>
+  <button class="btn secundario" onclick="mostrarDashboard()">🏠 Ir a inicio</button>
   <h2 id="titulo-materia" style="margin-top:12px;"></h2>
-  <button class="btn" onclick="abrirFormNuevoTema()">+ Agregar tema nuevo</button>
-  <div id="lista-temas" style="margin-top:14px;"></div>
+
+  <div class="tabs">
+    <div id="tab-temas" class="tab-btn tab-activo" onclick="mostrarTab('temas')">📚 Temas de Estudio</div>
+    <div id="tab-actividades" class="tab-btn" onclick="mostrarTab('actividades')">📝 Notas y Actividades</div>
+  </div>
+
+  <div id="seccion-temas">
+    <button class="btn" onclick="abrirFormNuevoTema()">+ Agregar tema nuevo</button>
+    <div id="lista-temas" style="margin-top:14px;"></div>
+  </div>
+
+  <div id="seccion-actividades" class="oculto">
+    <button class="btn" onclick="abrirFormNuevaActividad()">+ Agregar actividad/tarea</button>
+    <div id="lista-actividades" style="margin-top:14px;"></div>
+  </div>
 </div>
 
 <div id="vista-blurting" class="contenedor oculto">
-  <button class="btn secundario" onclick="mostrarMateria(materiaActual)">⬅ Volver</button>
+  <button class="btn secundario" onclick="mostrarMateria(materiaActual)">⬅ Volver a la materia</button>
   <h2 id="titulo-tema-blurting" style="margin-top:12px;"></h2>
   <p class="fecha">Escribe lo que recuerdes sin ver el contenido:</p>
   <textarea id="respuesta-blurting" placeholder="Escribe aquí lo que recuerdes..."></textarea>
@@ -66,7 +93,29 @@
   </div>
 </div>
 
-<nav id="nav-materias"></nav>
+<div id="modal-nueva-actividad" class="modal-overlay oculto">
+  <div class="modal">
+    <h3>Nueva actividad/tarea</h3>
+    <label class="lbl">Título</label>
+    <input id="act-titulo" placeholder="Ej: Informe de laboratorio">
+    <label class="lbl">Tipo</label>
+    <select id="act-tipo" class="campo">
+      <option>Tarea</option>
+      <option>Examen</option>
+      <option>Práctica</option>
+      <option>Proyecto</option>
+      <option>Otro</option>
+    </select>
+    <label class="lbl">Fecha de entrega</label>
+    <input id="act-fecha" type="date" class="campo">
+    <label class="lbl">Enlace del archivo (Google Drive, etc. - opcional)</label>
+    <input id="act-enlace" placeholder="https://drive.google.com/...">
+    <label class="lbl">Nota máxima (ej: 10 o 100)</label>
+    <input id="act-notamax" type="number" value="10">
+    <button class="btn" onclick="guardarNuevaActividad()">Guardar</button>
+    <button class="btn secundario" onclick="cerrarModalActividad()">Cancelar</button>
+  </div>
+</div>
 
 <script>
 const MATERIAS = [
@@ -92,36 +141,49 @@ function sumarDias(fechaStr, dias) {
 
 function cargarDatos() {
   let data = localStorage.getItem('estudioData');
+  let parsed;
   if (!data) {
-    let inicial = {};
-    MATERIAS.forEach(m => inicial[m] = []);
-    localStorage.setItem('estudioData', JSON.stringify(inicial));
-    return inicial;
+    parsed = {};
+    MATERIAS.forEach(m => parsed[m] = {temas:[], actividades:[]});
+    guardarDatos(parsed);
+    return parsed;
   }
-  return JSON.parse(data);
+  parsed = JSON.parse(data);
+  let cambio = false;
+  MATERIAS.forEach(m => {
+    if (!parsed[m]) { parsed[m] = {temas:[], actividades:[]}; cambio = true; }
+    else if (Array.isArray(parsed[m])) { parsed[m] = {temas: parsed[m], actividades:[]}; cambio = true; }
+    else {
+      if (!parsed[m].temas) { parsed[m].temas = []; cambio = true; }
+      if (!parsed[m].actividades) { parsed[m].actividades = []; cambio = true; }
+    }
+  });
+  if (cambio) guardarDatos(parsed);
+  return parsed;
 }
 
 function guardarDatos(data) { localStorage.setItem('estudioData', JSON.stringify(data)); }
 
-function renderNav() {
-  const nav = document.getElementById('nav-materias');
-  nav.innerHTML = '';
-  const btnInicio = document.createElement('button');
-  btnInicio.textContent = '🏠 Inicio';
-  btnInicio.onclick = mostrarDashboard;
-  nav.appendChild(btnInicio);
-  MATERIAS.forEach(m => {
-    const btn = document.createElement('button');
-    btn.textContent = m.length > 12 ? m.substring(0,12)+'…' : m;
-    btn.onclick = () => mostrarMateria(m);
-    nav.appendChild(btn);
+function poblarSelectores() {
+  const sel1 = document.getElementById('selector-materia');
+  const sel2 = document.getElementById('selector-materia-2');
+  [sel1, sel2].forEach(sel => {
+    MATERIAS.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = m;
+      sel.appendChild(opt);
+    });
   });
 }
+
+function irAMateria(materia) { if (materia) { mostrarMateria(materia); } }
 
 function mostrarDashboard() {
   document.getElementById('vista-dashboard').classList.remove('oculto');
   document.getElementById('vista-materia').classList.add('oculto');
   document.getElementById('vista-blurting').classList.add('oculto');
+  document.getElementById('selector-materia').value = '';
   renderDashboard();
 }
 
@@ -129,12 +191,14 @@ function renderDashboard() {
   const data = cargarDatos();
   const listaHoy = document.getElementById('lista-hoy');
   const resumen = document.getElementById('resumen-materias');
+  const contAct = document.getElementById('lista-actividades-dashboard');
   listaHoy.innerHTML = '';
   resumen.innerHTML = '';
   let hayPendientes = false;
+  let actividadesProximas = [];
 
   MATERIAS.forEach(materia => {
-    const temas = data[materia] || [];
+    const temas = data[materia].temas || [];
     temas.forEach(t => {
       if (!t.dominado && t.proximaFecha <= hoy()) {
         hayPendientes = true;
@@ -157,10 +221,30 @@ function renderDashboard() {
     card.onclick = () => mostrarMateria(materia);
     card.style.cursor = 'pointer';
     resumen.appendChild(card);
+
+    const acts = data[materia].actividades || [];
+    acts.forEach(a => {
+      if (!a.entregado && a.fechaEntrega) actividadesProximas.push({...a, materia});
+    });
   });
 
-  if (!hayPendientes) {
-    listaHoy.innerHTML = '<p style="color:#666;">🎉 No tienes repasos pendientes hoy.</p>';
+  if (!hayPendientes) listaHoy.innerHTML = '<p style="color:#666;">🎉 No tienes repasos pendientes hoy.</p>';
+
+  actividadesProximas.sort((a,b)=> a.fechaEntrega.localeCompare(b.fechaEntrega));
+  contAct.innerHTML = '';
+  if (actividadesProximas.length===0) {
+    contAct.innerHTML = '<p style="color:#666;">🎉 No tienes actividades pendientes.</p>';
+  } else {
+    actividadesProximas.slice(0,5).forEach(a=>{
+      const atrasada = a.fechaEntrega < hoy();
+      const div = document.createElement('div');
+      div.className='card';
+      div.innerHTML = `<h3>${a.titulo}</h3><div class="fecha">${a.materia} • Entrega: ${a.fechaEntrega}</div>
+        <span class="badge ${atrasada?'urgente':''}">${atrasada?'⚠️ Atrasada':'📌 Pendiente'}</span>`;
+      div.onclick = () => mostrarMateria(a.materia);
+      div.style.cursor='pointer';
+      contAct.appendChild(div);
+    });
   }
 }
 
@@ -170,12 +254,22 @@ function mostrarMateria(materia) {
   document.getElementById('vista-materia').classList.remove('oculto');
   document.getElementById('vista-blurting').classList.add('oculto');
   document.getElementById('titulo-materia').textContent = materia;
+  document.getElementById('selector-materia-2').value = materia;
+  mostrarTab('temas');
   renderTemas(materia);
+}
+
+function mostrarTab(tab) {
+  document.getElementById('tab-temas').classList.toggle('tab-activo', tab==='temas');
+  document.getElementById('tab-actividades').classList.toggle('tab-activo', tab==='actividades');
+  document.getElementById('seccion-temas').classList.toggle('oculto', tab!=='temas');
+  document.getElementById('seccion-actividades').classList.toggle('oculto', tab!=='actividades');
+  if (tab==='actividades') renderActividades(materiaActual);
 }
 
 function renderTemas(materia) {
   const data = cargarDatos();
-  const temas = data[materia] || [];
+  const temas = data[materia].temas || [];
   const lista = document.getElementById('lista-temas');
   lista.innerHTML = '';
   if (temas.length === 0) {
@@ -204,15 +298,15 @@ function guardarNuevoTema() {
   const titulo = document.getElementById('input-titulo').value.trim();
   const contenido = document.getElementById('input-contenido').value.trim();
   if (!titulo || !contenido) { alert('Completa título y contenido'); return; }
+  if (!materiaActual) { alert('Error: no hay materia seleccionada'); return; }
   const data = cargarDatos();
-  const nuevoTema = {
+  data[materiaActual].temas.push({
     id: Date.now().toString(),
     titulo, contenido,
     etapa: 0,
     dominado: false,
     proximaFecha: sumarDias(hoy(), INTERVALOS[0])
-  };
-  data[materiaActual].push(nuevoTema);
+  });
   guardarDatos(data);
   cerrarModal();
   renderTemas(materiaActual);
@@ -222,7 +316,7 @@ function abrirBlurting(materia, temaId) {
   materiaActual = materia;
   temaActualId = temaId;
   const data = cargarDatos();
-  const tema = data[materia].find(t => t.id === temaId);
+  const tema = data[materia].temas.find(t => t.id === temaId);
   document.getElementById('vista-dashboard').classList.add('oculto');
   document.getElementById('vista-materia').classList.add('oculto');
   document.getElementById('vista-blurting').classList.remove('oculto');
@@ -236,20 +330,121 @@ function revelarContenido() { document.getElementById('contenido-original').clas
 
 function marcarRepasado() {
   const data = cargarDatos();
-  const tema = data[materiaActual].find(t => t.id === temaActualId);
+  const tema = data[materiaActual].temas.find(t => t.id === temaActualId);
   tema.etapa += 1;
-  if (tema.etapa >= INTERVALOS.length) {
-    tema.dominado = true;
-  } else {
-    tema.proximaFecha = sumarDias(hoy(), INTERVALOS[tema.etapa]);
-  }
+  if (tema.etapa >= INTERVALOS.length) tema.dominado = true;
+  else tema.proximaFecha = sumarDias(hoy(), INTERVALOS[tema.etapa]);
   guardarDatos(data);
   alert(tema.dominado ? '🎉 ¡Tema dominado por completo!' : `✅ Repasado. Próximo repaso: ${tema.proximaFecha}`);
   mostrarMateria(materiaActual);
 }
 
-renderNav();
+// ===== ACTIVIDADES Y NOTAS =====
+
+function abrirFormNuevaActividad() { document.getElementById('modal-nueva-actividad').classList.remove('oculto'); }
+function cerrarModalActividad() {
+  document.getElementById('modal-nueva-actividad').classList.add('oculto');
+  document.getElementById('act-titulo').value='';
+  document.getElementById('act-fecha').value='';
+  document.getElementById('act-enlace').value='';
+  document.getElementById('act-notamax').value='10';
+}
+
+function guardarNuevaActividad() {
+  const titulo = document.getElementById('act-titulo').value.trim();
+  const tipo = document.getElementById('act-tipo').value;
+  const fecha = document.getElementById('act-fecha').value;
+  const enlace = document.getElementById('act-enlace').value.trim();
+  const notaMax = parseFloat(document.getElementById('act-notamax').value) || 10;
+  if (!titulo) { alert('Ponle un título a la actividad'); return; }
+  const data = cargarDatos();
+  data[materiaActual].actividades.push({
+    id: Date.now().toString(),
+    titulo, tipo, fechaEntrega: fecha, enlaceArchivo: enlace,
+    nota: null, notaMaxima: notaMax, entregado:false
+  });
+  guardarDatos(data);
+  cerrarModalActividad();
+  renderActividades(materiaActual);
+}
+
+function renderActividades(materia) {
+  const data = cargarDatos();
+  const actividades = (data[materia].actividades || []).slice().sort((a,b)=> (a.fechaEntrega||'9999').localeCompare(b.fechaEntrega||'9999'));
+  const cont = document.getElementById('lista-actividades');
+  cont.innerHTML='';
+
+  const conNota = actividades.filter(a=>a.nota!==null && a.nota!==undefined);
+  if (conNota.length>0) {
+    const promedio = conNota.reduce((s,a)=> s + (a.nota/a.notaMaxima*100), 0)/conNota.length;
+    const div = document.createElement('div');
+    div.className='card';
+    div.innerHTML = `<h3>📊 Promedio general</h3><div class="fecha">${promedio.toFixed(1)}% (basado en ${conNota.length} actividad${conNota.length>1?'es':''})</div>`;
+    cont.appendChild(div);
+  }
+
+  if (actividades.length===0) {
+    cont.innerHTML += '<p style="color:#666;">Aún no hay actividades. Agrega la primera 👆</p>';
+    return;
+  }
+
+  actividades.forEach(a=>{
+    const div = document.createElement('div');
+    div.className='tema-item';
+    const atrasada = a.fechaEntrega && a.fechaEntrega < hoy() && !a.entregado;
+    let badge = a.entregado ? '<span class="badge">✅ Entregado</span>' : (atrasada ? '<span class="badge urgente">⚠️ Atrasada</span>' : '<span class="badge">📌 Pendiente</span>');
+    let notaTxt = (a.nota!==null && a.nota!==undefined) ? `<div class="fecha">Nota: ${a.nota}/${a.notaMaxima}</div>` : '';
+    let enlaceTxt = a.enlaceArchivo ? `<div style="margin-top:4px;"><a href="${a.enlaceArchivo}" target="_blank">📎 Ver archivo adjunto</a></div>` : '';
+    div.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:start;">
+        <h4>${a.titulo}</h4>
+        <span onclick="eliminarActividad('${a.id}')" style="font-size:1.1rem;">🗑️</span>
+      </div>
+      <div class="fecha">${a.tipo}${a.fechaEntrega ? ' • Entrega: '+a.fechaEntrega : ''}</div>
+      ${badge}
+      ${notaTxt}
+      ${enlaceTxt}
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <button class="btn secundario" style="margin-top:0;" onclick="toggleEntregado('${a.id}')">${a.entregado?'↩️ Desmarcar':'✅ Entregado'}</button>
+        <button class="btn" style="margin-top:0;" onclick="ponerNota('${a.id}')">📝 Nota</button>
+      </div>
+    `;
+    cont.appendChild(div);
+  });
+}
+
+function toggleEntregado(id) {
+  const data = cargarDatos();
+  const act = data[materiaActual].actividades.find(a=>a.id===id);
+  act.entregado = !act.entregado;
+  guardarDatos(data);
+  renderActividades(materiaActual);
+}
+
+function ponerNota(id) {
+  const data = cargarDatos();
+  const act = data[materiaActual].actividades.find(a=>a.id===id);
+  const notaMax = act.notaMaxima || 10;
+  const val = prompt(`Ingresa la nota obtenida (sobre ${notaMax}):`, act.nota !== null ? act.nota : '');
+  if (val === null) return;
+  const num = parseFloat(val);
+  if (isNaN(num)) { alert('Ingresa un número válido'); return; }
+  act.nota = num;
+  act.entregado = true;
+  guardarDatos(data);
+  renderActividades(materiaActual);
+}
+
+function eliminarActividad(id) {
+  if (!confirm('¿Eliminar esta actividad?')) return;
+  const data = cargarDatos();
+  data[materiaActual].actividades = data[materiaActual].actividades.filter(a=>a.id!==id);
+  guardarDatos(data);
+  renderActividades(materiaActual);
+}
+
+poblarSelectores();
 mostrarDashboard();
 </script>
 </body>
-  </html>
+</html>
