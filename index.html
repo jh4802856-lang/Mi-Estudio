@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi Plataforma de Estudio</title>
+<style>
+  * { box-sizing: border-box; margin:0; padding:0; }
+  body { font-family: -apple-system, Roboto, Arial, sans-serif; background:#f4f6f8; color:#222; padding-bottom:70px;}
+  header { background:#2d6a4f; color:white; padding:16px; text-align:center; position:sticky; top:0; z-index:10;}
+  header h1 { font-size:1.2rem; }
+  .contenedor { padding:16px; }
+  .card { background:white; border-radius:10px; padding:14px; margin-bottom:12px; box-shadow:0 1px 4px rgba(0,0,0,0.1);}
+  .card h3 { color:#2d6a4f; margin-bottom:4px;}
+  .badge { display:inline-block; background:#ffb703; color:#222; font-size:0.75rem; padding:2px 8px; border-radius:12px; margin-top:4px;}
+  .badge.urgente { background:#e63946; color:white; }
+  nav { position:fixed; bottom:0; left:0; right:0; background:white; display:flex; overflow-x:auto; border-top:1px solid #ddd; z-index:10;}
+  nav button { flex:1; min-width:85px; padding:10px 4px; background:none; border:none; font-size:0.7rem; color:#555; }
+  .oculto { display:none; }
+  .btn { background:#2d6a4f; color:white; border:none; padding:10px 16px; border-radius:8px; font-size:0.9rem; margin-top:8px; width:100%;}
+  .btn.secundario { background:#adb5bd; }
+  input, textarea { width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; margin-top:6px; font-size:0.9rem; }
+  textarea { min-height:100px; }
+  .tema-item { background:white; border-radius:8px; padding:12px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,0.08); }
+  .tema-item h4 { color:#333; }
+  .fecha { font-size:0.75rem; color:#888; margin-top:2px;}
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; padding:16px; z-index:20;}
+  .modal { background:white; border-radius:12px; padding:20px; width:100%; max-width:400px; max-height:85vh; overflow-y:auto; }
+</style>
+</head>
+<body>
+
+<header><h1>📚 Mi Plataforma de Estudio</h1></header>
+
+<div id="vista-dashboard" class="contenedor">
+  <h2>🔔 Hoy toca repasar:</h2>
+  <div id="lista-hoy"></div>
+  <h2 style="margin-top:20px;">📊 Resumen por materia</h2>
+  <div id="resumen-materias"></div>
+</div>
+
+<div id="vista-materia" class="contenedor oculto">
+  <button class="btn secundario" onclick="mostrarDashboard()">⬅ Volver</button>
+  <h2 id="titulo-materia" style="margin-top:12px;"></h2>
+  <button class="btn" onclick="abrirFormNuevoTema()">+ Agregar tema nuevo</button>
+  <div id="lista-temas" style="margin-top:14px;"></div>
+</div>
+
+<div id="vista-blurting" class="contenedor oculto">
+  <button class="btn secundario" onclick="mostrarMateria(materiaActual)">⬅ Volver</button>
+  <h2 id="titulo-tema-blurting" style="margin-top:12px;"></h2>
+  <p class="fecha">Escribe lo que recuerdes sin ver el contenido:</p>
+  <textarea id="respuesta-blurting" placeholder="Escribe aquí lo que recuerdes..."></textarea>
+  <button class="btn" onclick="revelarContenido()">👀 Ver contenido original</button>
+  <div id="contenido-original" class="oculto" style="margin-top:14px; background:#fff3cd; padding:12px; border-radius:8px; white-space:pre-wrap;"></div>
+  <button class="btn" style="margin-top:14px;" onclick="marcarRepasado()">✅ Ya lo repasé</button>
+</div>
+
+<div id="modal-nuevo-tema" class="modal-overlay oculto">
+  <div class="modal">
+    <h3>Nuevo tema</h3>
+    <input id="input-titulo" placeholder="Título del tema (ej: Bloque 1)">
+    <textarea id="input-contenido" placeholder="Pega aquí el contenido/resumen a estudiar"></textarea>
+    <button class="btn" onclick="guardarNuevoTema()">Guardar</button>
+    <button class="btn secundario" onclick="cerrarModal()">Cancelar</button>
+  </div>
+</div>
+
+<nav id="nav-materias"></nav>
+
+<script>
+const MATERIAS = [
+  "Sistemas de Producción Agrícola 2",
+  "Sistemas de Producción Animal 2",
+  "Informática",
+  "Uso y Manejo de Agua",
+  "Ingeniería en Plantas Agroindustriales",
+  "Psicología Social"
+];
+
+const INTERVALOS = [1,3,7,15,30];
+let materiaActual = null;
+let temaActualId = null;
+
+function hoy() { return new Date().toISOString().split('T')[0]; }
+
+function sumarDias(fechaStr, dias) {
+  const fecha = new Date(fechaStr);
+  fecha.setDate(fecha.getDate() + dias);
+  return fecha.toISOString().split('T')[0];
+}
+
+function cargarDatos() {
+  let data = localStorage.getItem('estudioData');
+  if (!data) {
+    let inicial = {};
+    MATERIAS.forEach(m => inicial[m] = []);
+    localStorage.setItem('estudioData', JSON.stringify(inicial));
+    return inicial;
+  }
+  return JSON.parse(data);
+}
+
+function guardarDatos(data) { localStorage.setItem('estudioData', JSON.stringify(data)); }
+
+function renderNav() {
+  const nav = document.getElementById('nav-materias');
+  nav.innerHTML = '';
+  const btnInicio = document.createElement('button');
+  btnInicio.textContent = '🏠 Inicio';
+  btnInicio.onclick = mostrarDashboard;
+  nav.appendChild(btnInicio);
+  MATERIAS.forEach(m => {
+    const btn = document.createElement('button');
+    btn.textContent = m.length > 12 ? m.substring(0,12)+'…' : m;
+    btn.onclick = () => mostrarMateria(m);
+    nav.appendChild(btn);
+  });
+}
+
+function mostrarDashboard() {
+  document.getElementById('vista-dashboard').classList.remove('oculto');
+  document.getElementById('vista-materia').classList.add('oculto');
+  document.getElementById('vista-blurting').classList.add('oculto');
+  renderDashboard();
+}
+
+function renderDashboard() {
+  const data = cargarDatos();
+  const listaHoy = document.getElementById('lista-hoy');
+  const resumen = document.getElementById('resumen-materias');
+  listaHoy.innerHTML = '';
+  resumen.innerHTML = '';
+  let hayPendientes = false;
+
+  MATERIAS.forEach(materia => {
+    const temas = data[materia] || [];
+    temas.forEach(t => {
+      if (!t.dominado && t.proximaFecha <= hoy()) {
+        hayPendientes = true;
+        const div = document.createElement('div');
+        div.className = 'card';
+        const urgente = t.proximaFecha < hoy();
+        div.innerHTML = `<h3>${t.titulo}</h3><div class="fecha">${materia}</div>
+          <span class="badge ${urgente ? 'urgente' : ''}">${urgente ? '⚠️ Atrasado' : '📌 Hoy'}</span>`;
+        div.style.cursor = 'pointer';
+        div.onclick = () => abrirBlurting(materia, t.id);
+        listaHoy.appendChild(div);
+      }
+    });
+
+    const totalTemas = temas.length;
+    const dominados = temas.filter(t => t.dominado).length;
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<h3>${materia}</h3><div class="fecha">${dominados}/${totalTemas} temas dominados</div>`;
+    card.onclick = () => mostrarMateria(materia);
+    card.style.cursor = 'pointer';
+    resumen.appendChild(card);
+  });
+
+  if (!hayPendientes) {
+    listaHoy.innerHTML = '<p style="color:#666;">🎉 No tienes repasos pendientes hoy.</p>';
+  }
+}
+
+function mostrarMateria(materia) {
+  materiaActual = materia;
+  document.getElementById('vista-dashboard').classList.add('oculto');
+  document.getElementById('vista-materia').classList.remove('oculto');
+  document.getElementById('vista-blurting').classList.add('oculto');
+  document.getElementById('titulo-materia').textContent = materia;
+  renderTemas(materia);
+}
+
+function renderTemas(materia) {
+  const data = cargarDatos();
+  const temas = data[materia] || [];
+  const lista = document.getElementById('lista-temas');
+  lista.innerHTML = '';
+  if (temas.length === 0) {
+    lista.innerHTML = '<p style="color:#666;">Aún no hay temas. Agrega el primero 👆</p>';
+    return;
+  }
+  temas.forEach(t => {
+    const div = document.createElement('div');
+    div.className = 'tema-item';
+    let estado = t.dominado ? '✅ Dominado' : (t.proximaFecha <= hoy() ? '🔔 Repasar ahora' : `⏳ Próximo repaso: ${t.proximaFecha}`);
+    div.innerHTML = `<h4>${t.titulo}</h4><div class="fecha">${estado}</div>`;
+    div.style.cursor = 'pointer';
+    div.onclick = () => abrirBlurting(materia, t.id);
+    lista.appendChild(div);
+  });
+}
+
+function abrirFormNuevoTema() { document.getElementById('modal-nuevo-tema').classList.remove('oculto'); }
+function cerrarModal() {
+  document.getElementById('modal-nuevo-tema').classList.add('oculto');
+  document.getElementById('input-titulo').value = '';
+  document.getElementById('input-contenido').value = '';
+}
+
+function guardarNuevoTema() {
+  const titulo = document.getElementById('input-titulo').value.trim();
+  const contenido = document.getElementById('input-contenido').value.trim();
+  if (!titulo || !contenido) { alert('Completa título y contenido'); return; }
+  const data = cargarDatos();
+  const nuevoTema = {
+    id: Date.now().toString(),
+    titulo, contenido,
+    etapa: 0,
+    dominado: false,
+    proximaFecha: sumarDias(hoy(), INTERVALOS[0])
+  };
+  data[materiaActual].push(nuevoTema);
+  guardarDatos(data);
+  cerrarModal();
+  renderTemas(materiaActual);
+}
+
+function abrirBlurting(materia, temaId) {
+  materiaActual = materia;
+  temaActualId = temaId;
+  const data = cargarDatos();
+  const tema = data[materia].find(t => t.id === temaId);
+  document.getElementById('vista-dashboard').classList.add('oculto');
+  document.getElementById('vista-materia').classList.add('oculto');
+  document.getElementById('vista-blurting').classList.remove('oculto');
+  document.getElementById('titulo-tema-blurting').textContent = tema.titulo;
+  document.getElementById('respuesta-blurting').value = '';
+  document.getElementById('contenido-original').classList.add('oculto');
+  document.getElementById('contenido-original').textContent = tema.contenido;
+}
+
+function revelarContenido() { document.getElementById('contenido-original').classList.remove('oculto'); }
+
+function marcarRepasado() {
+  const data = cargarDatos();
+  const tema = data[materiaActual].find(t => t.id === temaActualId);
+  tema.etapa += 1;
+  if (tema.etapa >= INTERVALOS.length) {
+    tema.dominado = true;
+  } else {
+    tema.proximaFecha = sumarDias(hoy(), INTERVALOS[tema.etapa]);
+  }
+  guardarDatos(data);
+  alert(tema.dominado ? '🎉 ¡Tema dominado por completo!' : `✅ Repasado. Próximo repaso: ${tema.proximaFecha}`);
+  mostrarMateria(materiaActual);
+}
+
+renderNav();
+mostrarDashboard();
+</script>
+</body>
+  </html>
